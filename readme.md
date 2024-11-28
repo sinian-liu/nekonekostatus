@@ -60,6 +60,57 @@ docker run --restart=on-failure --name nekonekostatus -p 5555:5555 -d nkeonkeo/n
 
 备份数据库: `/root/nekonekostatus/database/db.db`
 
+## HTTPS申请和域名绑定
+```
+#!/bin/bash
+
+# 变量定义
+DOMAIN="修改为你的域名"
+IP="修改为你的IP"
+PORT="5555"
+EMAIL="admin@sdmin.com"
+
+# 更新软件包列表并安装 Nginx 和 Certbot
+sudo apt update -y
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# 创建 Nginx 配置文件
+echo "Creating Nginx configuration for $DOMAIN..."
+cat > /etc/nginx/sites-available/$DOMAIN <<EOL
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://$IP:$PORT;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOL
+
+# 启用该网站配置
+sudo ln -s /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
+
+# 测试 Nginx 配置是否正确
+sudo nginx -t
+
+# 重新加载 Nginx
+sudo systemctl reload nginx
+
+# 申请 SSL 证书
+echo "Requesting Let's Encrypt SSL certificate for $DOMAIN..."
+sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+
+# 配置自动续期
+echo "Setting up auto-renewal for Let's Encrypt certificate..."
+echo "0 0 * * * root certbot renew --quiet && systemctl reload nginx" | sudo tee /etc/cron.d/certbot-renew
+
+# 完成
+echo "Configuration complete. Your site is now accessible via HTTPS at https://$DOMAIN."
+```
 ## 手动安装
 
 依赖: `nodejs`, `gcc/g++ version 8.x `, `git`
