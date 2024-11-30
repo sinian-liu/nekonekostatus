@@ -65,14 +65,29 @@ docker run --restart=on-failure --name nekonekostatus -p 5555:5555 -d nkeonkeo/n
 #!/bin/bash
 
 # 变量定义
-DOMAIN="修改为你的域名"
-IP="修改为你的IP"
-PORT="5555"
-EMAIL="admin@sdmin.com"
+DOMAIN="server.1373737.xyz"  # 修改为你的域名
+IP="127.0.0.1"           # 使用本地回环 IP，因为 Nginx 将代理到本地容器
+PORT="8080"              # 使用修改后的容器端口
+EMAIL="admin@sdmin.com"  # 替换为你的实际邮箱
 
-# 更新软件包列表并安装 Nginx 和 Certbot
-sudo apt update -y
-sudo apt install -y nginx certbot python3-certbot-nginx
+# 检测并安装 Nginx
+if ! command -v nginx &> /dev/null
+then
+    echo "Nginx not found, installing..."
+    sudo apt update -y
+    sudo apt install -y nginx
+else
+    echo "Nginx is already installed."
+fi
+
+# 检测并安装 Certbot
+if ! command -v certbot &> /dev/null
+then
+    echo "Certbot not found, installing..."
+    sudo apt install -y certbot python3-certbot-nginx
+else
+    echo "Certbot is already installed."
+fi
 
 # 创建 Nginx 配置文件
 echo "Creating Nginx configuration for $DOMAIN..."
@@ -82,7 +97,7 @@ server {
     server_name $DOMAIN;
 
     location / {
-        proxy_pass http://$IP:$PORT;
+        proxy_pass http://$IP:$PORT;  # 反向代理到容器端口
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
